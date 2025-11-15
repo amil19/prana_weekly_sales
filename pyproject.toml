@@ -1,0 +1,20 @@
+[project]
+name = "prana"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "adbc-driver-postgresql>=1.9.0",
+    "connectorx>=0.4.4",
+    "pandas>=2.3.3",
+    "polars>=1.35.2",
+    "psycopg2-binary>=2.9.11",
+    "sqlalchemy>=2.0.44",
+    "streamlit>=1.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+]

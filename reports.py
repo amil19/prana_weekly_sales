@@ -26,7 +26,7 @@ class Reports:
     where
     "reportStartTime" = (select "reportStartTime" from metrics)
     group by title,issue,publisher,"storeCount"
-    ) select RANK() OVER (ORDER BY weighted_ranking DESC) as rank, * from sales order by rank limit 400;
+    ) select RANK() OVER (ORDER BY sold_qty DESC) as rank, * from sales order by rank limit 400;
     '''
 
     @st.fragment

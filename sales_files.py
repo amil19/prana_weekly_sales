@@ -34,7 +34,7 @@ class CSA_Weekly_Sales():
     def load_publisher_info(self):
         """Loads publisher names and codes from the cloud."""
         query = '''select distinct "PUBLISHER" as publisher, substring("UPC_NO",1,6) as publisher_code from bestseller_data where "UPC_NO" is not null;'''
-        with connections.bs_engine.connect() as bs_conn:
+        with connections.engine.connect() as bs_conn:
             try:
                 self.pub_names = pl.read_database(query,bs_conn).lazy()
             except Exception as e:

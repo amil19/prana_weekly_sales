@@ -16,6 +16,11 @@ class CSA_Weekly_Sales():
     cleaned_columns = [publisher,title_code,issue,cover,printing,title]
 
     def __init__(self,file: str):
+        """Initiliazes class to process a weekly sales file.
+
+        Args:
+            file (str): Weekly sales file.
+        """
         self.file = file
         self.load_publisher_info()
         self.load_data()

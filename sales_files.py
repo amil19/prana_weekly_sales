@@ -17,7 +17,6 @@ class CSA_Weekly_Sales():
 
     schema = {"barcode": pl.String,
               "title":pl.String,
-              "issue_name":pl.String,
               "reportStartTime":pl.Datetime(time_unit='us'),
               "reportEndTime": pl.Datetime(time_unit='us'),
               "totalEverSold": pl.Int32,

@@ -39,7 +39,7 @@ class CSA_Weekly_Sales():
     def load_data(self):
         """Generates DataFrame from file.
         """
-        self.df = pl.scan_csv(self.file,schema=self.schema)\
+        self.df = pl.scan_csv(self.file,schema_overrides=self.schema)\
             .cast({'barcode': pl.Int64},strict=False).drop_nulls().select(self.schema.keys())
 
     def clean_data(self):

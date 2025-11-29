@@ -15,6 +15,16 @@ class CSA_Weekly_Sales():
 
     cleaned_columns = [publisher,title_code,issue,cover,printing,title]
 
+    schema = {"barcode": pl.String,
+              "title":pl.String,
+              "issue_name":pl.String,
+              "reportStartTime":pl.Datetime(time_unit='us'),
+              "reportEndTime": pl.Datetime(time_unit='us'),
+              "totalEverSold": pl.Int32,
+              "totalSoldInSpan": pl.Int32,
+              "totalPulled": pl.Int32,
+              "storeCount": pl.Int32}
+
     def __init__(self,file: str):
         """Initiliazes class to process a weekly sales file.
 
@@ -30,7 +40,8 @@ class CSA_Weekly_Sales():
     def load_data(self):
         """Generates DataFrame from file.
         """
-        self.df = pl.scan_csv(self.file).cast({'barcode': pl.Int64},strict=False).drop_nulls()
+        self.df = pl.scan_csv(self.file,schema=self.schema)\
+            .cast({'barcode': pl.Int64},strict=False).drop_nulls().select(self.schema.keys())
 
     def clean_data(self):
         """Cleans and transforms the data."""

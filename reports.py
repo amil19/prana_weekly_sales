@@ -3,7 +3,7 @@ import streamlit as st
 import connections
 
 class Reports:
-    top_400_query = '''
+    top_400_query_orig = '''
     with metrics as (
     select 
         "reportStartTime",
@@ -28,6 +28,36 @@ class Reports:
     group by title,issue,publisher,"storeCount"
     ) select RANK() OVER (ORDER BY sold_qty DESC) as rank, * from sales order by rank limit 400;
     '''
+
+    top_400_query = """
+with title_sales as
+    (
+      select
+        title,
+        issue,
+        publisher,
+        max("storeCount") as "storeCount",
+        sum("totalSoldInSpan") as sold_qty,
+        sum("totalSoldInSpan")/max("storeCount") as sold_per_store
+      from csa_data
+      where
+      "reportStartTime" = '{rpt_dt}'
+      group by title,issue,publisher
+    ),
+    metrics as (
+    select 
+        avg("sold_qty") as m, 
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY "storeCount") as c
+    from title_sales 
+    ),
+    sales as 
+    (
+    select 
+      a.*
+      ,((select m from metrics) * (select c from metrics) + "storeCount" * sold_per_store) / ((select m from metrics) + "storeCount") AS sold_per_store_weighted
+    from title_sales a
+    ) select RANK() OVER (ORDER BY sold_per_store_weighted DESC) as rank, * from sales order by rank limit 400;
+    """
 
     @st.fragment
     def load_rpt_dates():

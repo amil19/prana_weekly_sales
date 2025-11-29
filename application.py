@@ -36,7 +36,8 @@ with tab_2:
     if rpt_dt is not None:
         results = Reports.load_report(rpt_dt)
         st.dataframe(results)
-
+        marketshare = Reports.calc_marketshare(results)
+        Reports.plot_marketshare(marketshare,rpt_dt)
 
 
 

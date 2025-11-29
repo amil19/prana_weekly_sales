@@ -19,7 +19,7 @@ class Reports:
       "reportStartTime" = '{rpt_dt}'
       group by title,issue,publisher
     )
-    select RANK() OVER (ORDER BY sold_per_store DESC) as rank, * from title_sales order by rank limit 400;
+    select RANK() OVER (ORDER BY sold_qty DESC) as rank, * from title_sales order by rank limit 400;
     """
 
     @st.fragment

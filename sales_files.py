@@ -11,7 +11,11 @@ class CSA_Weekly_Sales():
     issue = pl.col("barcode").cast(str).str.slice(12,3).cast(pl.Int64).alias("issue")
     cover = pl.col("barcode").cast(str).str.slice(15,1).cast(pl.Int64).alias("cover")
     printing = pl.col("barcode").cast(str).str.slice(16,1).cast(pl.Int64).alias("printing")
-    title = pl.col("title").str.extract(pattern,1).str.strip_chars()
+    title = pl.col("title").str.extract(pattern,1)\
+        .str.strip_chars()\
+            .str.strip_chars("'")\
+                .str.to_titlecase()
+
 
     cleaned_columns = [publisher,title_code,issue,cover,printing,title]
 

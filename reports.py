@@ -2,6 +2,7 @@ import polars as pl
 import streamlit as st
 import connections
 import altair as alt
+from rich.console import Console
 
 class Reports:
 
@@ -42,32 +43,72 @@ class Reports:
             except Exception as e:
                 raise e
 
-    @st.fragment        
+    @staticmethod   
     def calc_marketshare(df: pl.DataFrame):
         marketshare_df = df.group_by('publisher').agg(
             pl.sum("sold_qty").alias('total_sales'))
         
         return marketshare_df.sort('total_sales',descending=True).head(10)
     
-    @st.fragment
+    @staticmethod
     def plot_marketshare(df: pl.DataFrame,rpt_dt: str):
 
+    #     chart = alt.Chart(df).transform_joinaggregate(
+    #         TotalSales='sum(total_sales)',
+    #     ).transform_calculate(
+    #         PercentOfTotal="datum.total_sales / datum.TotalSales"
+    #     ).mark_bar(color='green').encode(
+    #         alt.X('PercentOfTotal:Q',
+    #               axis=alt.Axis(format='.0%',values=[0.0,.05,.1,.15,.2,.25,.3,.35,.4,.45,.5]), scale=alt.Scale(domain=[0, .5], nice=False)
+    #               ).title('Market Share'),
+    #         y=alt.Y('publisher:N',
+    #                 axis=alt.Axis(labelFontSize=14, labelLimit=200)
+    #                 ).sort('-x').title(None))\
+    #             .configure_axis(grid=False).properties(width=700,height=500, padding=20,
+    #                                                    title=alt.TitleParams(
+    #     "Publisher Market Share % (based on units)",fontSize=18,
+    #     subtitle=[f'Week of {rpt_dt}'],subtitleFontSize=14)).configure_view(
+    # strokeWidth=0)
+
+    #     st.altair_chart(chart)
+
         chart = alt.Chart(df).transform_joinaggregate(
-            TotalSales='sum(total_sales)',
-        ).transform_calculate(
-            PercentOfTotal="datum.total_sales / datum.TotalSales"
-        ).mark_bar(color='green').encode(
-            alt.X('PercentOfTotal:Q',
-                  axis=alt.Axis(format='.0%',values=[0.0,.05,.1,.15,.2,.25,.3,.35,.4,.45,.5]), scale=alt.Scale(domain=[0, .5], nice=False)
-                  ).title('Market Share'),
-            y=alt.Y('publisher:N',
-                    axis=alt.Axis(labelFontSize=14, labelLimit=200)
-                    ).sort('-x').title(None))\
-                .configure_axis(grid=False).properties(width=700,height=500,
-                                                       title=alt.TitleParams(
-        "Publisher Market Share % (based on units)",
-        subtitle=[f'Week of {rpt_dt}']))
+            TotalSales='sum(total_sales)'
+            ).transform_calculate(
+                PercentOfTotal="datum.total_sales / datum.TotalSales"
+                ).mark_bar(color='green').encode(
+                    alt.X('PercentOfTotal:Q',
+                        axis=alt.Axis(format='.0%',
+                                        values=[0.0,.05,.1,.15,.2,.25,.3,.35,.4,.45,.5]), 
+                        scale=alt.Scale(domain=[0, .5], nice=False)
+                        ).title('Market Share'),
+                    y=alt.Y('publisher:N',
+                    axis=alt.Axis(labelLimit=200)
+                    ).sort('-x').title(None))
+        
+        text = chart.mark_text(
+            align='center',
+            baseline='bottom',
+            dy=5,
+            dx=25
+        ).encode(
+            alt.Text('PercentOfTotal:Q',format='.2%')
+        )
+        
+        chart = chart+text
+
+        chart = chart.configure_axis(grid=False,
+                                    labelFontSize=14,
+                                    titleFontSize=16)
+        
+        chart = chart.properties(width=700,height=500,padding=20,
+                                title=alt.TitleParams(
+                                    "Publisher Market Share %",
+                                    fontSize=18,
+                                    subtitle=[f'Based on unit sales during the week of {rpt_dt}'],
+                                    subtitleFontSize=14,
+                                    anchor='start'))
+
+        chart = chart.configure_view(strokeWidth=0)
 
         st.altair_chart(chart)
-
-        

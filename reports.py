@@ -102,7 +102,8 @@ class Reports:
 
         chart = chart.configure_axis(grid=False,
                                     labelFontSize=14,
-                                    titleFontSize=16)
+                                    titleFontSize=16,
+                                    )
         
         chart = chart.properties(width=700,height=500,padding={"left": 20, "right": 20, "top": 20, "bottom": 20},
                                 title=alt.TitleParams(

@@ -8,7 +8,10 @@ class CSA_Weekly_Sales():
     pattern = r"([\w\d\s\W]*)[#]{1}[\w\d\s\W]*"
     publisher = pl.col("barcode").cast(str).str.slice(0,6).alias("publisher_code")
     title_code = pl.col("barcode").cast(str).str.slice(6,6).alias("title_code")
-    issue = pl.col("barcode").cast(str).str.slice(12,3).cast(pl.Int64).alias("issue")
+    #issue = pl.col("barcode").cast(str).str.slice(12,3).cast(pl.Int64).alias("issue")
+    issue = pl.when(pl.col("issue_name").str.contains("#")).then(
+        pl.col("issue_name").str.extract(r"(?:.*[#]{1})(\d+)").cast(pl.Int32)
+    ).otherwise(pl.lit(1)).cast(pl.Int32).alias('issue')
     cover = pl.col("barcode").cast(str).str.slice(15,1).cast(pl.Int64).alias("cover")
     printing = pl.col("barcode").cast(str).str.slice(16,1).cast(pl.Int64).alias("printing")
     title = pl.col("title").str.extract(pattern,1)\
@@ -26,7 +29,8 @@ class CSA_Weekly_Sales():
               "totalEverSold": pl.Int32,
               "totalSoldInSpan": pl.Int32,
               "totalPulled": pl.Int32,
-              "storeCount": pl.Int32}
+              "storeCount": pl.Int32,
+              "issue_name": pl.String}
 
     def __init__(self,file: str):
         """Initiliazes class to process a weekly sales file.
@@ -39,6 +43,7 @@ class CSA_Weekly_Sales():
         self.load_data()
         self.clean_data()
         self.join_pub_names()
+        self.df = self.df.drop('issue_name')
             
     def load_data(self):
         """Generates DataFrame from file.

@@ -21,13 +21,14 @@ with tab_1:
             st.session_state['upload_status'] = 'Uploading file...'
             st.write(st.session_state['upload_status'])
             connections.upload_data(file,sales.df)
+            st.warning(body='Refresh page before attempting to view the sales report for this file.', icon="🚨")
 
     file = st.file_uploader('Upload weekly sales csv','csv')
     if file is not None:
         sales = sales_files.CSA_Weekly_Sales(file)
         st.subheader("Data Preview")
         st.dataframe(sales.df.head())
-
+        st.info(body='Data is ready to be uploaded to the database. Click below to proceed with upload.', icon="✅")
         upload()
 
 with tab_2:

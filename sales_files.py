@@ -48,11 +48,21 @@ class CSA_Weekly_Sales():
     def load_data(self):
         """Generates DataFrame from file.
         """
-        self.df = pl.scan_csv(self.file,schema_overrides=self.schema)\
-            .cast({'barcode': pl.Int64},strict=False).drop_nulls().select(self.schema.keys())
+        self.csv_columns = pl.scan_csv(self.file).collect_schema().names()
+
+        if 'title' not in self.csv_columns and 'issue' in self.csv_columns \
+            and 'type' in self.csv_columns:
+            new_schema = {k.replace("title","issue"): v for k,v in self.schema.items()}
+            new_schema['type'] = pl.String
+            self.df = pl.scan_csv(self.file,schema_overrides=new_schema)\
+                .rename({'issue': 'title'}).filter(pl.col("type")=='comics').drop('type')
+        else:
+            self.df = pl.scan_csv(self.file,schema_overrides=self.schema)  
+        
+        self.df = self.df.cast({'barcode': pl.Int64},strict=False).drop_nulls().select(self.schema.keys())
 
     def clean_data(self):
-        """Cleans and transforms the data."""
+        """Cleans and transforms the data."""        
         self.df = self.df.with_columns(pl.col("barcode").cast(pl.String).str.pad_start(17,"0")).with_columns(self.cleaned_columns)
     
     def load_publisher_info(self):

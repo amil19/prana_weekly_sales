@@ -48,13 +48,21 @@ class CSA_Weekly_Sales():
     def load_data(self):
         """Generates DataFrame from file.
         """
-        self.csv_columns = pl.scan_csv(self.file).collect_schema().names()
+        self.csv_columns = pl.scan_csv(self.file,ignore_errors=True).collect_schema().names()
 
-        if 'title' not in self.csv_columns and 'issue' in self.csv_columns \
-            and 'type' in self.csv_columns:
-            new_schema = {k.replace("title","issue"): v for k,v in self.schema.items()}
-            new_schema['type'] = pl.String
-            self.df = pl.scan_csv(self.file,schema_overrides=new_schema)\
+        if 'title' not in self.csv_columns:
+            new_schema = {"barcode": pl.String,
+              "item_name":pl.String,
+              "reportStartTime":pl.Datetime(time_unit='us'),
+              "reportEndTime": pl.Datetime(time_unit='us'),
+              "totalEverSold": pl.Int32,
+              "totalSoldInSpan": pl.Int32,
+              "totalPulled": pl.Int32,
+              "storeCount": pl.Int32,
+              "issue_name": pl.String,
+              "type": pl.String}
+
+            self.df = pl.scan_csv(self.file,schema_overrides=new_schema,missing_utf8_is_empty_string=True)\
                 .rename({'issue': 'title'}).filter(pl.col("type")=='comics').drop('type')
         else:
             self.df = pl.scan_csv(self.file,schema_overrides=self.schema)  
@@ -74,8 +82,25 @@ class CSA_Weekly_Sales():
             except Exception as e:
                 raise e
     def join_pub_names(self):
-        """Joins pubisher info to the file."""
+        """Joins publisher info to the file."""
+        prana_fix = pl.when(
+            pl.col('title') == "Comics The Magazine"
+        ).then(
+            pl.lit("Prana Publishers")
+            ).otherwise(pl.col("publisher")).alias("publisher")
+        
+        missing_publishers = pl.when(
+            pl.col("publisher").is_null()
+            ).then(
+                pl.lit("Other")
+                ).otherwise(
+                    pl.col("publisher")
+                    ).alias("publisher")
+
         self.df = self.df.join(self.pub_names, on = 'publisher_code',how='left')\
-            .with_columns(pl.when(pl.col("publisher").is_null()).then(pl.lit("Other")).otherwise(pl.col("publisher")).alias("publisher"))\
-                .drop_nulls(subset=['title']).unique(subset=['barcode']).collect()
+            .with_columns(missing_publishers)\
+                .with_columns(prana_fix)\
+                    .drop_nulls(subset=['title'])\
+                        .unique(subset=['barcode'])\
+                            .collect()
         

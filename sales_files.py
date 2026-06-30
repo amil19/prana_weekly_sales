@@ -63,7 +63,7 @@ class CSA_Weekly_Sales():
               "type": pl.String}
 
             self.df = pl.scan_csv(self.file,schema_overrides=new_schema,missing_utf8_is_empty_string=True)\
-                .rename({'issue': 'title'}).filter(pl.col("type")=='comics').drop('type')
+                .rename({'item_name': 'title'}).filter(pl.col("type")=='comics').drop('type')
         else:
             self.df = pl.scan_csv(self.file,schema_overrides=self.schema)  
         

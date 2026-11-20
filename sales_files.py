@@ -1,5 +1,6 @@
 import polars as pl
 import streamlit as st
+import altair as alt
 import connections
 
 
@@ -104,3 +105,134 @@ class CSA_Weekly_Sales():
                         .unique(subset=['barcode'])\
                             .collect()
         
+
+class CSA_Monthly_Sales():
+
+    output_file_name = "top400.csv"
+    output_file_name_dollars = output_file_name.replace(".csv","_w_dollars.csv")
+
+    def __init__(self, sales_df: pl.DataFrame, sales_file: str):
+        """Processes monthly sales file.
+
+        Args:
+            sales_df (pl.DataFrame): A processed CSA sales DataFrame.
+            sales_file (str): The path to the monthly sales file
+        """
+        self.df = sales_df
+        self.sales_file = pl.read_csv(sales_file,
+                                      schema_overrides={
+                                          'barcode': pl.String,
+                                          'issue_name': pl.String
+                                      },
+                                      ignore_errors=True)
+        
+        self.df = self.join_issue_name(self.df, self.sales_file.select("barcode","issue_name"))
+        self.df = self.prep_data(self.df)
+        self.df = self.correct_ctm_pub(self.df)
+        self.df = self.add_prices(self.df, self.sales_file.select('barcode','price'))
+
+    @staticmethod
+    def join_issue_name(df_1: pl.DataFrame, df_2: pl.DataFrame) -> pl.DataFrame:
+        
+        return df_1.join(df_2, on='barcode', how='inner')
+        
+    @staticmethod
+    def prep_data(df: pl.DataFrame) -> pl.DataFrame:
+        df = df.with_columns(
+        pl.col('issue_name').str.strip_chars("'")\
+            .str.strip_chars().str.to_titlecase())        
+        return df
+
+    @staticmethod
+    def correct_ctm_pub(df: pl.DataFrame) -> pl.DataFrame:
+        df = df.with_columns(
+            pl.when(pl.col("issue_name").str.contains("Comics The Magazine"))
+            .then(pl.lit("Prana Publishers"))
+            .otherwise(pl.col("publisher"))
+            .alias("publisher")
+        )
+        return df
+
+    @staticmethod
+    def add_prices(df: pl.DataFrame, sales_df: pl.DataFrame):
+        prices = sales_df
+        df = df.join(prices, on='barcode', how='left')
+        return df
+
+    @staticmethod
+    def calc_top_sales(df:pl.DataFrame,limit: int=400, dollars: bool=False) -> pl.DataFrame:
+    
+        # Add total Dollars
+        df = df.with_columns(
+            (pl.col("price")*pl.col("totalSoldInSpan")).alias("totalDollars")
+            )
+    
+        top_sales = df.group_by('issue_name','publisher')\
+        .agg(pl.max("storeCount").alias("storeCount"),
+             pl.sum("totalSoldInSpan").alias("sold_qty"),
+             (pl.sum("totalSoldInSpan")/pl.max("storeCount")).alias("sold_per_store"),
+             pl.sum("totalDollars").alias('dollars_sold'),
+             (pl.sum("totalDollars")/pl.max("storeCount")).alias('dollars_sold_per_store'),
+             )\
+                .with_columns(pl.col('sold_qty').rank(method='ordinal',descending=True).alias("rank")).sort('rank',descending=False).head(limit)
+    
+        if not dollars:
+            top_sales = top_sales.drop('dollars_sold',"dollars_sold_per_store")
+        else:
+            top_sales = top_sales\
+                .with_columns(
+                    pl.col('dollars_sold').rank(method='ordinal',descending=True).alias("rank")
+                    ).sort('rank',descending=False).head(limit)
+        
+        return top_sales
+
+    @staticmethod
+    def plot_marketshare(df: pl.DataFrame,rpt_dt: str, dollars: bool=False):
+    
+        chart = alt.Chart(df).transform_joinaggregate(
+            TotalSales='sum(total_sales)'
+            ).transform_calculate(
+                PercentOfTotal="datum.total_sales / datum.TotalSales"
+                ).mark_bar(color='green').encode(
+                    alt.X('PercentOfTotal:Q',
+                          axis=alt.Axis(format='.0%',
+                                        values=[0.0,.05,.1,.15,.2,.25,.3,.35,.4,.45,.5]), 
+                          scale=alt.Scale(domain=[0, .5], nice=False)
+                        ).title('Market Share'),
+                    y=alt.Y('publisher:N',
+                    axis=alt.Axis(labelLimit=200)
+                    ).sort('-x').title(None))
+    
+    
+        text = chart.mark_text(
+            align='center',
+            baseline='bottom',
+            dy=5,
+            dx=25
+        ).encode(
+            alt.Text('PercentOfTotal:Q',format='.2%')
+        )
+        
+        chart = chart+text
+    
+        chart = chart.configure_axis(grid=False,
+                                     labelFontSize=14,
+                                     titleFontSize=16)
+    
+        if dollars:
+            sub = f'Based on dollar sales in {rpt_dt}'
+        else:
+            sub=f'Based on unit sales in {rpt_dt}'
+        
+        chart = chart.properties(width=700, height=500, 
+                                 padding={"top": 20, "bottom": 20, "left": 20, "right": 20},
+                                 title=alt.TitleParams(
+                                     "Publisher Market Share %",
+                                     fontSize=18,
+                                     subtitle=sub,
+                                     subtitleFontSize=14,
+                                     anchor='start'))
+        
+        chart = chart.configure_view(strokeWidth=0)
+
+        st.altair_chart(chart)
